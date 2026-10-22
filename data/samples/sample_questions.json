@@ -1,0 +1,47 @@
+[
+  {
+    "subject_code_or_id": "OB-101",
+    "unit_number_or_id": 2,
+    "question_text": "Which dimension of the Big Five Model measures an individual's inclination to experience positive emotions and social assertiveness?",
+    "difficulty": "medium",
+    "options": [
+      "Extroversion",
+      "Agreeableness",
+      "Neuroticism",
+      "Openness to Experience"
+    ],
+    "correct_answer": "Extroversion",
+    "explanation": "Extroversion captures comfort level with relationships, sociability, assertiveness, and positive emotional expression.",
+    "source_reference": "Robbins & Judge 18th Ed, Ch 5"
+  },
+  {
+    "subject_code_or_id": "MA-102",
+    "unit_number_or_id": 4,
+    "question_text": "In Marginal Costing, what is the formula for the Profit-Volume (P/V) Ratio?",
+    "difficulty": "medium",
+    "options": [
+      "(Contribution / Sales) * 100",
+      "(Net Profit / Total Assets) * 100",
+      "(Fixed Costs / Variable Costs) * 100",
+      "(Gross Margin / Operating Cost) * 100"
+    ],
+    "correct_answer": "(Contribution / Sales) * 100",
+    "explanation": "The Profit-Volume ratio measures the rate of change of profit with respect to sales volume: (Contribution / Sales) * 100.",
+    "source_reference": "Horngren's Cost Accounting, Ch 3"
+  },
+  {
+    "subject_code_or_id": "BOM-108",
+    "unit_number_or_id": 1,
+    "question_text": "Which marketing orientation assumes that consumers will favor products that offer the most quality, performance, and innovative features?",
+    "difficulty": "easy",
+    "options": [
+      "Product Concept",
+      "Production Concept",
+      "Selling Concept",
+      "Holistic Marketing Concept"
+    ],
+    "correct_answer": "Product Concept",
+    "explanation": "The product concept proposes that consumers favor quality and performance, requiring continuous product improvement.",
+    "source_reference": "Kotler & Keller, Marketing Management 16th Ed, Ch 1"
+  }
+]
