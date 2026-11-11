@@ -16,6 +16,7 @@ from app.services.notification_service import send_study_reminder
 router = APIRouter(prefix="/reminders", tags=["Reminder Preferences"])
 
 @router.get("/preference", response_model=ReminderPreferenceResponse)
+@router.get("/preferences", response_model=ReminderPreferenceResponse)
 @router.get("/settings", response_model=ReminderPreferenceResponse)
 def get_user_reminder_preference(
     db: Session = Depends(get_db),
@@ -37,6 +38,7 @@ def get_user_reminder_preference(
     return pref
 
 @router.put("/preference", response_model=ReminderPreferenceResponse)
+@router.put("/preferences", response_model=ReminderPreferenceResponse)
 @router.put("/settings", response_model=ReminderPreferenceResponse)
 def update_user_reminder_preference(
     pref_in: ReminderPreferenceUpdate,

@@ -136,7 +136,7 @@ def generate_daily_quiz(db: Session, user: User, date_str: Optional[str] = None)
 
 
 def _collect_unit_exam_pool(db: Session, unit: Unit, difficulty: str) -> List[Question]:
-    """Collect questions for unit exam, prioritizing selected unit, then subject, then general bank."""
+    """Collect questions for unit exam, prioritizing selected unit, then subject pool."""
     unit_qs = (
         db.query(Question)
         .filter(
@@ -164,26 +164,12 @@ def _collect_unit_exam_pool(db: Session, unit: Unit, difficulty: str) -> List[Qu
         )
         unit_qs.extend([q for q in subject_qs if q.id not in existing_ids])
 
-    needed = 10 - len(unit_qs)
-    if needed > 0:
-        existing_ids = {q.id for q in unit_qs}
-        general_qs = (
-            db.query(Question)
-            .filter(
-                Question.is_active == True,
-                Question.is_approved == True,
-                Question.difficulty == difficulty
-            )
-            .all()
-        )
-        unit_qs.extend([q for q in general_qs if q.id not in existing_ids])
-
     return unit_qs
 
 
 def _collect_subject_exam_pool(db: Session, subject: Subject, difficulty: str) -> List[Question]:
-    """Collect questions for subject exam, prioritizing subject, then general bank."""
-    subject_qs = (
+    """Collect questions for subject exam strictly from the chosen subject."""
+    return (
         db.query(Question)
         .filter(
             Question.subject_id == subject.id,
@@ -193,20 +179,6 @@ def _collect_subject_exam_pool(db: Session, subject: Subject, difficulty: str) -
         )
         .all()
     )
-    needed = 10 - len(subject_qs)
-    if needed > 0:
-        existing_ids = {q.id for q in subject_qs}
-        general_qs = (
-            db.query(Question)
-            .filter(
-                Question.is_active == True,
-                Question.is_approved == True,
-                Question.difficulty == difficulty
-            )
-            .all()
-        )
-        subject_qs.extend([q for q in general_qs if q.id not in existing_ids])
-    return subject_qs
 
 
 def generate_unit_exam(db: Session, user: User, unit_id: int) -> Tuple[QuizAttempt, List[Question]]:
