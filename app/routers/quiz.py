@@ -69,28 +69,54 @@ def start_daily_quiz(
 
 @router.get("/unit-exam", response_model=QuizSessionResponse)
 def get_unit_exam_get(
-    unit_id: Optional[int] = Query(None),
-    unitId: Optional[int] = Query(None),
-    subject_id: Optional[int] = Query(None),
-    subjectId: Optional[int] = Query(None),
+    unit_id: Optional[str] = Query(None),
+    unitId: Optional[str] = Query(None),
+    subject_id: Optional[str] = Query(None),
+    subjectId: Optional[str] = Query(None),
     unitNumber: Optional[int] = Query(None),
+    unit_number: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """GET alias for unit exam."""
-    uid = unit_id or unitId
-    if not uid and (subject_id or subjectId) and unitNumber:
-        sid = subject_id or subjectId
-        u = db.query(Unit).filter(Unit.subject_id == sid, Unit.unit_number == unitNumber).first()
-        if u:
-            uid = u.id
-    if not uid and (subject_id or subjectId):
-        sid = subject_id or subjectId
-        u = db.query(Unit).filter(Unit.subject_id == sid).first()
-        if u:
-            uid = u.id
+    """GET alias for unit exam with robust subject & unit resolution."""
+    uid = None
+    raw_uid = unit_id or unitId
+    if raw_uid and str(raw_uid).isdigit():
+        uid = int(raw_uid)
+
     if not uid:
-        raise HTTPException(status_code=400, detail="unit_id is required.")
+        raw_sid = subject_id or subjectId
+        target_subject = None
+        if raw_sid:
+            raw_s_str = str(raw_sid).strip()
+            if raw_s_str.isdigit():
+                target_subject = db.query(Subject).filter(Subject.id == int(raw_s_str)).first()
+            if not target_subject:
+                clean_code = raw_s_str.upper().replace("SUBJ-", "")
+                target_subject = db.query(Subject).filter(
+                    (func.upper(Subject.code) == clean_code) |
+                    (func.upper(Subject.code).like(f"{clean_code}%"))
+                ).first()
+
+        u_num = unitNumber or unit_number
+        if target_subject and u_num:
+            u = db.query(Unit).filter(Unit.subject_id == target_subject.id, Unit.unit_number == int(u_num)).first()
+            if u:
+                uid = u.id
+
+        if target_subject and not uid:
+            u = db.query(Unit).filter(Unit.subject_id == target_subject.id).order_by(Unit.unit_number).first()
+            if u:
+                uid = u.id
+
+    if not uid:
+        # Default to first available unit in DB
+        first_unit = db.query(Unit).order_by(Unit.id).first()
+        if first_unit:
+            uid = first_unit.id
+        else:
+            raise HTTPException(status_code=400, detail="No syllabus units available to start unit exam.")
+
     attempt, questions = generate_unit_exam(db, current_user, uid)
     return _format_exam_session(attempt, questions)
 
@@ -103,23 +129,41 @@ def start_unit_exam(
     """
     Generate a 30-question Unit Exam for the selected unit.
     - Exactly 10 Easy, 10 Medium, 10 Hard questions.
-    - Returns 400 validation error if unit pool has fewer than 10 questions in any difficulty tier.
     """
     attempt, questions = generate_unit_exam(db, current_user, unit_id)
     return _format_exam_session(attempt, questions)
 
 @router.get("/subject-exam", response_model=QuizSessionResponse)
 def get_subject_exam_get(
-    subject_id: Optional[int] = Query(None),
-    subjectId: Optional[int] = Query(None),
+    subject_id: Optional[str] = Query(None),
+    subjectId: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """GET alias for subject exam."""
-    sid = subject_id or subjectId
-    if not sid:
-        raise HTTPException(status_code=400, detail="subject_id is required.")
-    attempt, questions = generate_subject_exam(db, current_user, sid)
+    """GET alias for subject exam with robust subject resolution."""
+    raw_sid = subject_id or subjectId
+    if not raw_sid:
+        first_s = db.query(Subject).order_by(Subject.id).first()
+        if first_s:
+            sid_int = first_s.id
+        else:
+            raise HTTPException(status_code=400, detail="subject_id is required.")
+    else:
+        raw_s_str = str(raw_sid).strip()
+        if raw_s_str.isdigit():
+            sid_int = int(raw_s_str)
+        else:
+            clean_code = raw_s_str.upper().replace("SUBJ-", "")
+            target_subject = db.query(Subject).filter(
+                (func.upper(Subject.code) == clean_code) |
+                (func.upper(Subject.code).like(f"{clean_code}%"))
+            ).first()
+            sid_int = target_subject.id if target_subject else None
+
+    if not sid_int:
+        raise HTTPException(status_code=404, detail="Subject not found.")
+
+    attempt, questions = generate_subject_exam(db, current_user, sid_int)
     return _format_exam_session(attempt, questions)
 
 @router.post("/subject/{subject_id}/start", response_model=QuizSessionResponse)

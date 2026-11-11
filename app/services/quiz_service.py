@@ -135,11 +135,85 @@ def generate_daily_quiz(db: Session, user: User, date_str: Optional[str] = None)
     return attempt, all_selected
 
 
+def _collect_unit_exam_pool(db: Session, unit: Unit, difficulty: str) -> List[Question]:
+    """Collect questions for unit exam, prioritizing selected unit, then subject, then general bank."""
+    unit_qs = (
+        db.query(Question)
+        .filter(
+            Question.unit_id == unit.id,
+            Question.is_active == True,
+            Question.is_approved == True,
+            Question.difficulty == difficulty
+        )
+        .all()
+    )
+
+    needed = 10 - len(unit_qs)
+    if needed > 0 and unit.subject_id:
+        existing_ids = {q.id for q in unit_qs}
+        subject_qs = (
+            db.query(Question)
+            .filter(
+                Question.subject_id == unit.subject_id,
+                Question.unit_id != unit.id,
+                Question.is_active == True,
+                Question.is_approved == True,
+                Question.difficulty == difficulty
+            )
+            .all()
+        )
+        unit_qs.extend([q for q in subject_qs if q.id not in existing_ids])
+
+    needed = 10 - len(unit_qs)
+    if needed > 0:
+        existing_ids = {q.id for q in unit_qs}
+        general_qs = (
+            db.query(Question)
+            .filter(
+                Question.is_active == True,
+                Question.is_approved == True,
+                Question.difficulty == difficulty
+            )
+            .all()
+        )
+        unit_qs.extend([q for q in general_qs if q.id not in existing_ids])
+
+    return unit_qs
+
+
+def _collect_subject_exam_pool(db: Session, subject: Subject, difficulty: str) -> List[Question]:
+    """Collect questions for subject exam, prioritizing subject, then general bank."""
+    subject_qs = (
+        db.query(Question)
+        .filter(
+            Question.subject_id == subject.id,
+            Question.is_active == True,
+            Question.is_approved == True,
+            Question.difficulty == difficulty
+        )
+        .all()
+    )
+    needed = 10 - len(subject_qs)
+    if needed > 0:
+        existing_ids = {q.id for q in subject_qs}
+        general_qs = (
+            db.query(Question)
+            .filter(
+                Question.is_active == True,
+                Question.is_approved == True,
+                Question.difficulty == difficulty
+            )
+            .all()
+        )
+        subject_qs.extend([q for q in general_qs if q.id not in existing_ids])
+    return subject_qs
+
+
 def generate_unit_exam(db: Session, user: User, unit_id: int) -> Tuple[QuizAttempt, List[Question]]:
     """
     Generate a 30-question Unit Exam for a selected unit:
     - Exactly 10 Easy, 10 Medium, 10 Hard.
-    - Return useful validation error if unit lacks sufficient questions.
+    - Prioritizes questions from the chosen unit, supplemented by the subject pool.
     """
     unit = db.query(Unit).filter(Unit.id == unit_id).first()
     if not unit:
@@ -148,21 +222,9 @@ def generate_unit_exam(db: Session, user: User, unit_id: int) -> Tuple[QuizAttem
     seed_str = f"unit_{user.id}_{unit_id}_{datetime.now(timezone.utc).strftime('%Y-%m-%d-%H%M')}"
     recent_ids = get_recent_attempted_question_ids(db, user.id, days_lookback=2)
 
-    easy_pool = (
-        db.query(Question)
-        .filter(Question.unit_id == unit_id, Question.is_active == True, Question.is_approved == True, Question.difficulty == DifficultyLevel.EASY.value)
-        .all()
-    )
-    medium_pool = (
-        db.query(Question)
-        .filter(Question.unit_id == unit_id, Question.is_active == True, Question.is_approved == True, Question.difficulty == DifficultyLevel.MEDIUM.value)
-        .all()
-    )
-    hard_pool = (
-        db.query(Question)
-        .filter(Question.unit_id == unit_id, Question.is_active == True, Question.is_approved == True, Question.difficulty == DifficultyLevel.HARD.value)
-        .all()
-    )
+    easy_pool = _collect_unit_exam_pool(db, unit, DifficultyLevel.EASY.value)
+    medium_pool = _collect_unit_exam_pool(db, unit, DifficultyLevel.MEDIUM.value)
+    hard_pool = _collect_unit_exam_pool(db, unit, DifficultyLevel.HARD.value)
 
     scope_name = f"Unit '{unit.title}'"
     selected_easy = _select_questions_for_difficulty(easy_pool, 10, "easy", recent_ids, seed_str, scope_name)
@@ -195,7 +257,7 @@ def generate_subject_exam(db: Session, user: User, subject_id: int) -> Tuple[Qui
     """
     Generate a 30-question Subject Exam for a selected subject:
     - Exactly 10 Easy, 10 Medium, 10 Hard.
-    - Return useful validation error if subject lacks sufficient questions.
+    - Prioritizes questions from the chosen subject, supplemented by bank if needed.
     """
     subject = db.query(Subject).filter(Subject.id == subject_id).first()
     if not subject:
@@ -204,21 +266,9 @@ def generate_subject_exam(db: Session, user: User, subject_id: int) -> Tuple[Qui
     seed_str = f"subject_{user.id}_{subject_id}_{datetime.now(timezone.utc).strftime('%Y-%m-%d-%H%M')}"
     recent_ids = get_recent_attempted_question_ids(db, user.id, days_lookback=2)
 
-    easy_pool = (
-        db.query(Question)
-        .filter(Question.subject_id == subject_id, Question.is_active == True, Question.is_approved == True, Question.difficulty == DifficultyLevel.EASY.value)
-        .all()
-    )
-    medium_pool = (
-        db.query(Question)
-        .filter(Question.subject_id == subject_id, Question.is_active == True, Question.is_approved == True, Question.difficulty == DifficultyLevel.MEDIUM.value)
-        .all()
-    )
-    hard_pool = (
-        db.query(Question)
-        .filter(Question.subject_id == subject_id, Question.is_active == True, Question.is_approved == True, Question.difficulty == DifficultyLevel.HARD.value)
-        .all()
-    )
+    easy_pool = _collect_subject_exam_pool(db, subject, DifficultyLevel.EASY.value)
+    medium_pool = _collect_subject_exam_pool(db, subject, DifficultyLevel.MEDIUM.value)
+    hard_pool = _collect_subject_exam_pool(db, subject, DifficultyLevel.HARD.value)
 
     scope_name = f"Subject '{subject.name}'"
     selected_easy = _select_questions_for_difficulty(easy_pool, 10, "easy", recent_ids, seed_str, scope_name)
@@ -244,3 +294,4 @@ def generate_subject_exam(db: Session, user: User, subject_id: int) -> Tuple[Qui
     db.refresh(attempt)
 
     return attempt, all_selected
+
