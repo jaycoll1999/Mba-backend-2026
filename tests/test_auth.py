@@ -3,7 +3,7 @@ import pytest
 def test_register_student(client):
     payload = {
         "email": "new_student@mbahub.edu",
-        "password": "SecretPassword123!",
+        "password": "SecretPass123!",
         "full_name": "Priya Sharma",
         "role": "student",
         "college": "IIM Ahmedabad",
