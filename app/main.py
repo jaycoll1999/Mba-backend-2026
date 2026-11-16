@@ -41,25 +41,33 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Configuration
+# CORS Configuration - allow localhost & any deployed Vercel frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if settings.ENV == "development" else settings.BACKEND_CORS_ORIGINS,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$" if settings.ENV != "development" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API v1 Routers
+# Include API v1 Routers (/api/v1/...) & Direct Root Aliases
 api_v1_prefix = settings.API_V1_PREFIX
-app.include_router(auth_router, prefix=api_v1_prefix)
-app.include_router(subjects_router, prefix=api_v1_prefix)
-app.include_router(questions_router, prefix=api_v1_prefix)
-app.include_router(quiz_router, prefix=api_v1_prefix)
-app.include_router(resources_router, prefix=api_v1_prefix)
-app.include_router(reminders_router, prefix=api_v1_prefix)
-app.include_router(analytics_router, prefix=api_v1_prefix)
-app.include_router(admin_router, prefix=api_v1_prefix)
+routers = [
+    auth_router,
+    subjects_router,
+    questions_router,
+    quiz_router,
+    resources_router,
+    reminders_router,
+    analytics_router,
+    admin_router,
+]
+
+for r in routers:
+    app.include_router(r, prefix=api_v1_prefix)
+    # Direct alias without /api/v1 prefix so requests directly to /subjects, /quiz, etc. never 404
+    app.include_router(r)
 
 @app.get("/", tags=["Health"])
 def root():
