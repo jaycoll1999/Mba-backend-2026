@@ -105,6 +105,8 @@ def update_current_user_profile(
         current_user.college = profile_in.college
     if profile_in.roll_number is not None:
         current_user.roll_number = profile_in.roll_number
+    if profile_in.avatar_url is not None:
+        current_user.avatar_url = profile_in.avatar_url
 
     db.commit()
     db.refresh(current_user)

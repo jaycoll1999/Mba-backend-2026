@@ -18,6 +18,7 @@ class User(Base):
     role = Column(String(50), default=UserRole.STUDENT.value, nullable=False)
     college = Column(String(255), nullable=True)
     roll_number = Column(String(100), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
     streak_days = Column(Integer, default=0, nullable=False)
     last_active_date = Column(String(10), nullable=True)  # YYYY-MM-DD
     is_active = Column(Boolean, default=True, nullable=False)

@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     role: str
     college: Optional[str] = None
     roll_number: Optional[str] = None
+    avatar_url: Optional[str] = None
     streak_days: int
     last_active_date: Optional[str] = None
     is_active: bool
@@ -43,3 +44,4 @@ class UserUpdateProfile(BaseModel):
     full_name: Optional[str] = None
     college: Optional[str] = None
     roll_number: Optional[str] = None
+    avatar_url: Optional[str] = None
